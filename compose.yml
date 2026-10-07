@@ -1,0 +1,72 @@
+services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: roopbank-mysql
+
+    environment:
+      MYSQL_DATABASE: roopbank
+      MYSQL_USER: roopbank
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - roopbank-mysql-data:/var/lib/mysql
+
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: roopbank-kafka
+
+    ports:
+      - "9093:9093"
+
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:9093,CONTROLLER://:9094
+
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+
+  app:
+    image: roopbank-app:latest
+    container_name: roopbank-app
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/roopbank
+      SPRING_DATASOURCE_USERNAME: roopbank
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET}
+
+    depends_on:
+      - mysql
+      - kafka
+
+
+volumes:
+  roopbank-mysql-data:
